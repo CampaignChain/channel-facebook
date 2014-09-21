@@ -15,5 +15,8 @@
         "campaignchain/core": "dev-master",
         "campaignchain/security-authentication-client-oauth": "dev-master",
         "facebook/php-sdk": "dev-master"
+    },
+    "autoload": {
+        "psr-4": { "CampaignChain\\Channel\\FacebookBundle\\": "" }
     }
 }
