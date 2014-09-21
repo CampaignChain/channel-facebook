@@ -1,0 +1,38 @@
+{#
+This file is part of the CampaignChain package.
+
+(c) Sandro Groganz <sandro@campaignchain.com>
+
+For the full copyright and license information, please view the LICENSE
+file that was distributed with this source code.
+#}
+
+{% extends 'CampaignChainCoreBundle:Base:base.html.twig' %}
+
+{% block body %}
+    <div id="fb-root"></div>
+    <script>
+        // Include the Facebook JavaScript SDK to logout the user
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId      : '{{ app_id }}',
+                status     : true,
+                xfbml      : true
+            });
+        };
+
+        (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); js.id = id;
+            js.src = "//connect.facebook.net/en_US/all.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    </script>
+
+     <div class="jumbotron">
+         <p>Connect to the respective Facebook account by logging in to Facebook. Your username and password will remain with Facebook and will not be stored in this application.</p>
+         <p><a class="btn btn-primary btn-lg" role="button" onclick="FB.logout(function(response) {});popupwindow('{{ path('campaignchain_channel_facebook_login') }}','',600,600);">Connect with Facebook</a></p>
+     </div>
+
+ {% endblock %}

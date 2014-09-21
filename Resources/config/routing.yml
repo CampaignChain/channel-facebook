@@ -1,0 +1,22 @@
+# This file is part of the CampaignChain package.
+#
+# (c) Sandro Groganz <sandro@campaignchain.com>
+#
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+
+campaignchain_channel_facebook_create:
+    pattern:  /channel/facebook/create
+    defaults: { _controller: CampaignChainChannelFacebookBundle:Facebook:create }
+
+campaignchain_channel_facebook_login:
+    pattern:  /channel/facebook/create/login
+    defaults: { _controller: CampaignChainChannelFacebookBundle:Facebook:login }
+
+campaignchain_channel_facebook_location_add:
+    pattern:  /channel/facebook/create/location/add
+    defaults: { _controller: CampaignChainChannelFacebookBundle:Facebook:addLocation }
+
+campaignchain_channel_facebook_location_configure:
+    pattern:  /channel/facebook/create/location/configure/{step}
+    defaults: { _controller: CampaignChainChannelFacebookBundle:Facebook:configureLocation }

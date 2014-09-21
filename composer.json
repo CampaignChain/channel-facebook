@@ -1,0 +1,19 @@
+{
+    "name": "campaignchain/channel-facebook",
+    "description": "Connect with Facebook.",
+    "keywords": ["facebook","oauth"],
+    "type": "campaignchain-channel",
+    "homepage": "http://www.campaignchain.com",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Sandro Groganz",
+            "email": "sandro@campaignchain.com"
+        }
+    ],
+    "require": {
+        "campaignchain/core": "dev-master",
+        "campaignchain/security-authentication-client-oauth": "dev-master",
+        "facebook/php-sdk": "dev-master"
+    }
+}
