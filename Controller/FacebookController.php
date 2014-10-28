@@ -300,7 +300,7 @@ class FacebookController extends Controller
                 $facebookUser->setProfileUrl($profile->profileURL);
                 $facebookUser->setProfileImageUrl($profile->photoURL);
                 $obj = new \ReflectionObject($profile);
-                if($obj->hasProperty("coverInfoURL")){
+                if($obj->hasProperty("coverInfoUrl")){
                     $facebookUser->setCoverInfoUrl($profile->coverInfoURL);
                 }
 
