@@ -204,9 +204,6 @@ class FacebookController extends Controller
             }
         }
 
-        $form->add('save', 'submit', array(
-                'label' => 'Next',
-            ));
         $form = $form->getForm();
 
         $form->handleRequest($request);
