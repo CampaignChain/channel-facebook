@@ -18,5 +18,20 @@
     },
     "autoload": {
         "psr-4": { "CampaignChain\\Channel\\FacebookBundle\\": "" }
+    },
+    "extra": {
+        "campaignchain": {
+            "kernel": {
+                "classes": [
+                    "CampaignChain\\Channel\\FacebookBundle\\CampaignChainChannelFacebookBundle"
+                ],
+                "routing":
+                {
+                    "name": "campaignchain_channel_facebook",
+                    "resource": "@CampaignChainChannelFacebookBundle/Resources/config/routing.yml",
+                    "prefix": "/"
+                }
+            }
+        }
     }
 }
