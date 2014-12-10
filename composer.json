@@ -12,8 +12,8 @@
         }
     ],
     "require": {
-        "campaignchain/core": "1.0.0-alpha.3",
-        "campaignchain/security-authentication-client-oauth": "1.0.0-alpha.3",
+        "campaignchain/core": "dev-master",
+        "campaignchain/security-authentication-client-oauth": "dev-master",
         "facebook/php-sdk": "dev-master"
     },
     "autoload": {
