@@ -12,8 +12,8 @@ namespace CampaignChain\Channel\FacebookBundle\Controller;
 
 use CampaignChain\CoreBundle\Entity\Channel,
     CampaignChain\CoreBundle\Entity\Location,
-    CampaignChain\Location\FacebookBundle\Entity\FacebookUser,
-    CampaignChain\Location\FacebookBundle\Entity\FacebookPage;
+    CampaignChain\Location\FacebookBundle\Entity\User,
+    CampaignChain\Location\FacebookBundle\Entity\Page;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\Entity\Token;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -273,36 +273,36 @@ class FacebookController extends Controller
                 $location->setUrl($profile->profileURL);
 
                 // Here we handle the specific data of the user stream as provided by Facebook.
-                $facebookUser = new FacebookUser();
-                $facebookUser->setLocation($location);
-                $facebookUser->setScope($this->applicationInfo['parameters']['scope']);
-                $facebookUser->setIdentifier($profile->identifier);
-                $facebookUser->setUsername($profile->username);
-                $facebookUser->setDisplayName($profile->displayName);
-                $facebookUser->setFirstName($profile->firstName);
-                $facebookUser->setLastName($profile->lastName);
-                $facebookUser->setDescription($profile->description);
-                $facebookUser->setGender($profile->gender);
-                $facebookUser->setLanguage($profile->language);
-                $facebookUser->setAge($profile->age);
-                $facebookUser->setEmail($profile->email);
-                $facebookUser->setEmailVerified($profile->emailVerified);
-                $facebookUser->setPhone($profile->phone);
-                $facebookUser->setAddress($profile->address);
-                $facebookUser->setCountry($profile->country);
-                $facebookUser->setRegion($profile->region);
-                $facebookUser->setCity($profile->city);
-                $facebookUser->setZip($profile->zip);
-                $facebookUser->setWebsiteUrl($profile->webSiteURL);
-                $facebookUser->setProfileUrl($profile->profileURL);
-                $facebookUser->setProfileImageUrl($profile->photoURL);
+                $user = new User();
+                $user->setLocation($location);
+                $user->setScope($this->applicationInfo['parameters']['scope']);
+                $user->setIdentifier($profile->identifier);
+                $user->setUsername($profile->username);
+                $user->setDisplayName($profile->displayName);
+                $user->setFirstName($profile->firstName);
+                $user->setLastName($profile->lastName);
+                $user->setDescription($profile->description);
+                $user->setGender($profile->gender);
+                $user->setLanguage($profile->language);
+                $user->setAge($profile->age);
+                $user->setEmail($profile->email);
+                $user->setEmailVerified($profile->emailVerified);
+                $user->setPhone($profile->phone);
+                $user->setAddress($profile->address);
+                $user->setCountry($profile->country);
+                $user->setRegion($profile->region);
+                $user->setCity($profile->city);
+                $user->setZip($profile->zip);
+                $user->setWebsiteUrl($profile->webSiteURL);
+                $user->setProfileUrl($profile->profileURL);
+                $user->setProfileImageUrl($profile->photoURL);
                 $obj = new \ReflectionObject($profile);
                 if($obj->hasProperty("coverInfoUrl")){
-                    $facebookUser->setCoverInfoUrl($profile->coverInfoURL);
+                    $user->setCoverInfoUrl($profile->coverInfoURL);
                 }
 
                 // Remember the user object in the Wizard.
-                $wizard->set($facebookUser->getIdentifier(), $facebookUser);
+                $wizard->set($user->getIdentifier(), $user);
 
                 $flashBagMsg = $wizard->get('flashBagMsg');
                 $flashBagMsg .= '<li>User stream: <a href="'.$profile->profileURL.'">'.$profile->displayName.'</a></li>';
@@ -323,38 +323,38 @@ class FacebookController extends Controller
                 // Define the URL of the location
                 $location->setUrl($pageData['link']);
 
-                $facebookPage = new FacebookPage();
-                $facebookPage->setLocation($location);
-                $facebookPage->addUser($wizard->get($wizard->get('facebook_user_id')));
-                $facebookPage->setIdentifier($identifier);
-                $facebookPage->setName($pageData['name']);
+                $page = new Page();
+                $page->setLocation($location);
+                $page->addUser($wizard->get($wizard->get('facebook_user_id')));
+                $page->setIdentifier($identifier);
+                $page->setName($pageData['name']);
                 if(isset($pageData['username'])){
-                    $facebookPage->setUsername($pageData['username']);
+                    $page->setUsername($pageData['username']);
                 }
                 if(isset($pageData['description'])){
-                    $facebookPage->setDescription($pageData['description']);
+                    $page->setDescription($pageData['description']);
                 }
                 if(isset($pageData['about'])){
-                    $facebookPage->setAbout($pageData['about']);
+                    $page->setAbout($pageData['about']);
                 }
-                $facebookPage->setPermissions($pageData['perms']);
-                $facebookPage->setCanPost($pageData['can_post']);
-                $facebookPage->setCategory($pageData['category']);
+                $page->setPermissions($pageData['perms']);
+                $page->setCanPost($pageData['can_post']);
+                $page->setCategory($pageData['category']);
                 if(isset($pageData['cover'])){
-                    $facebookPage->setCoverId($pageData['cover']['cover_id']);
-                    $facebookPage->setCoverSource($pageData['cover']['source']);
-                    $facebookPage->setCoverOffsetX($pageData['cover']['offset_x']);
-                    $facebookPage->setCoverOffsetY($pageData['cover']['offset_y']);
+                    $page->setCoverId($pageData['cover']['cover_id']);
+                    $page->setCoverSource($pageData['cover']['source']);
+                    $page->setCoverOffsetX($pageData['cover']['offset_x']);
+                    $page->setCoverOffsetY($pageData['cover']['offset_y']);
                 }
-                $facebookPage->setIsPublished($pageData['is_published']);
-                $facebookPage->setLink($pageData['link']);
-                $facebookPage->setPictureUrl($pageData['picture_url']);
+                $page->setIsPublished($pageData['is_published']);
+                $page->setLink($pageData['link']);
+                $page->setPictureUrl($pageData['picture_url']);
 
                 // Remember the user object in the Wizard.
-                $wizard->set($facebookPage->getIdentifier(), $facebookPage);
+                $wizard->set($page->getIdentifier(), $page);
 
                 $flashBagMsg = $wizard->get('flashBagMsg');
-                $flashBagMsg .= '<li>Page: <a href="'.$facebookPage->getLink().'">'.$facebookPage->getName().'</a></li>';
+                $flashBagMsg .= '<li>Page: <a href="'.$page->getLink().'">'.$page->getName().'</a></li>';
                 $wizard->set('flashBagMsg', $flashBagMsg);
             }
 
