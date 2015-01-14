@@ -169,9 +169,8 @@ class FacebookController extends Controller
 
                     $wizardPages[$pageData['id']] = $pageData;
                 }
+                $wizard->set('pagesData', $wizardPages);
             }
-
-            $wizard->set('pagesData', $wizardPages);
         }
 
 
