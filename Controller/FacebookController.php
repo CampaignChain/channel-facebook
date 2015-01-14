@@ -324,7 +324,24 @@ class FacebookController extends Controller
 
                 $page = new Page();
                 $page->setLocation($location);
-                $page->addUser($wizard->get($wizard->get('facebook_user_id')));
+                // If the user is not in the session, then it has already been
+                // created.
+                if($wizard->has($wizard->get('facebook_user_id'))){
+                    $user = $wizard->get($wizard->get('facebook_user_id'));
+                } else {
+                    $user = $this->getDoctrine()
+                        ->getRepository('CampaignChainLocationFacebookBundle:User')
+                        ->findOneByIdentifier($wizard->get('facebook_user_id'));
+
+                    if(!$user){
+                        throw new \Exception(
+                            'No Facebook user location with identifier '
+                            .$wizard->get('facebook_user_id')
+                        );
+                    }
+                }
+
+                $page->addUser($user);
                 $page->setIdentifier($identifier);
                 $page->setName($pageData['name']);
                 if(isset($pageData['username'])){
@@ -386,12 +403,21 @@ class FacebookController extends Controller
 
                 $channel = $wizard->persist();
 
-                // Store all access tokens per location in the OAuth Client bundle's Token entity.
+                /*
+                 * Store all access tokens per location in the OAuth Client
+                 * bundle's Token entity, but only for the Facebook user
+                 * locations, not the page locations.
+                 */
                 $tokenService = $this->get('campaignchain.security.authentication.client.oauth.token');
                 foreach($tokens as $identifier => $token){
-                    $token = $repository->merge($token);
-                    $token->setLocation($locations[$identifier]);
-                    $tokenService->setToken($token);
+                    if(
+                        isset($locations[$identifier])
+                        && $locations[$identifier]->getLocationModule()->getIdentifier() == 'campaignchain-facebook-user'
+                    ){
+                        $token = $repository->merge($token);
+                        $token->setLocation($locations[$identifier]);
+                        $tokenService->setToken($token);
+                    }
                 }
 
                 $wizard->end();
