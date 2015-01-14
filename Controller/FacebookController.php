@@ -30,7 +30,7 @@ class FacebookController extends Controller
         'parameters' => array(
             "trustForwarded" => false,
             "display" => "popup",
-            "scope" => "public_profile, user_friends, email, user_about_me, user_activities, user_events, user_likes, user_photos, user_status, user_videos, user_website, publish_actions, manage_pages",
+            "scope" => "public_profile, user_friends, email, user_about_me, user_activities, user_events, user_likes, user_photos, user_status, user_videos, user_website, publish_actions, manage_pages, read_stream, read_insights, read_friendlists",
         ),
     );
 
@@ -48,6 +48,7 @@ class FacebookController extends Controller
                 array(
                     'page_title' => 'Connect with '.self::RESOURCE_OWNER,
                     'app_id' => $application->getKey(),
+                    'server_name' => $_SERVER['SERVER_NAME'],
                 )
             );
         }
@@ -198,6 +199,7 @@ class FacebookController extends Controller
             ));
 
             // If a location has already been added before, remove it from this process.
+            // TODO: Also assign existing locations to the new FB user.
             if($pageExists){
                 unset($locations[$identifier]);
             }
@@ -412,7 +414,6 @@ class FacebookController extends Controller
                 foreach($tokens as $identifier => $token){
                     if(
                         isset($locations[$identifier])
-                        && $locations[$identifier]->getLocationModule()->getIdentifier() == 'campaignchain-facebook-user'
                     ){
                         $token = $repository->merge($token);
                         $token->setLocation($locations[$identifier]);
