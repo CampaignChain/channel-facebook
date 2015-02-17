@@ -12,14 +12,23 @@
         }
     ],
     "require": {
+<<<<<<< HEAD
         "campaignchain/core": "dev-master",
         "campaignchain/security-authentication-client-oauth": "dev-master",
         "facebook/php-sdk-v4": "dev-master"
+=======
+        "campaignchain/core": "dev-master",
+        "campaignchain/security-authentication-client-oauth": "dev-master",
+        "facebook/php-sdk-v4": "4.0.*"
+>>>>>>> 1.0.0-beta.1
     },
     "autoload": {
         "psr-4": { "CampaignChain\\Channel\\FacebookBundle\\": "" }
     },
     "extra": {
+        "branch-alias": {
+            "dev-1.0.0-beta.1": "1.0.0-dev"
+        },
         "campaignchain": {
             "kernel": {
                 "classes": [
