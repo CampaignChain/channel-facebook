@@ -11,4 +11,5 @@ modules:
         routes:
             new: campaignchain_channel_facebook_create
         hooks:
-            campaignchain-assignee: true
+            default:
+                campaignchain-assignee: true
