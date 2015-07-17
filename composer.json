@@ -1,7 +1,7 @@
 {
     "name": "campaignchain/channel-facebook",
     "description": "Connect with Facebook.",
-    "keywords": ["facebook","oauth"],
+    "keywords": ["facebook","oauth","campaignchain"],
     "type": "campaignchain-channel",
     "homepage": "http://www.campaignchain.com",
     "license": "Apache-2.0",
