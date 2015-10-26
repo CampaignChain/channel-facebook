@@ -212,7 +212,7 @@ class FacebookController extends Controller
         if ($form->isValid()) {
             // Find out which locations should be added, i.e. which respective checkbox is active.
             foreach($locations as $identifier => $location){
-                if(!$form->get($identifier)){
+                if(!$form->get($identifier)->getData()){
                     unset($locations[$identifier]);
                     $wizard->removeLocation($identifier);
                 }
