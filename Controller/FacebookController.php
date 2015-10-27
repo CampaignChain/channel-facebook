@@ -30,7 +30,7 @@ class FacebookController extends Controller
         'parameters' => array(
             "trustForwarded" => false,
             "display" => "popup",
-            "scope" => "public_profile, user_friends, email, user_about_me, user_activities, user_events, user_likes, user_photos, user_status, user_videos, user_website, publish_actions, manage_pages, read_stream, read_insights, read_friendlists",
+            "scope" => "public_profile, user_friends, email, user_about_me, user_events, user_likes, user_photos, user_status, user_videos, user_website, publish_actions, manage_pages, read_stream, read_insights",
         ),
     );
 
