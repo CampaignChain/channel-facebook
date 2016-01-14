@@ -330,20 +330,17 @@ class FacebookController extends Controller
                 // created.
                 if($wizard->has($wizard->get('facebook_user_id'))){
                     $user = $wizard->get($wizard->get('facebook_user_id'));
+                    $page->addUser($user);
                 } else {
                     $user = $this->getDoctrine()
                         ->getRepository('CampaignChainLocationFacebookBundle:User')
                         ->findOneByIdentifier($wizard->get('facebook_user_id'));
 
-                    if(!$user){
-                        throw new \Exception(
-                            'No Facebook user location with identifier '
-                            .$wizard->get('facebook_user_id')
-                        );
+                    if ($user) {
+                        $page->addUser($user);
                     }
                 }
 
-                $page->addUser($user);
                 $page->setIdentifier($identifier);
                 $page->setName($pageData['name']);
                 if(isset($pageData['username'])){
