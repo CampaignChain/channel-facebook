@@ -318,7 +318,9 @@ class FacebookController extends Controller
                 $client = $this->container->get('campaignchain.channel.facebook.rest.client');
                 $tokens = $wizard->get('tokens');
                 $connection = $client->connect($application->getKey(), $application->getSecret(), $tokens[$wizard->get('facebook_user_id')]->getAccessToken());
-                $response = $connection->api('/'.$identifier);
+
+                $fields = ['about', 'link', 'name', 'username', 'description', 'can_post', 'category', 'cover', 'is_published'];
+                $response = $connection->api('/'.$identifier.'?fields='.implode(',', $fields));
                 $pageData = array_merge($pageData, $response);
 
                 // Define the URL of the location
