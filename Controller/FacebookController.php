@@ -387,11 +387,11 @@ class FacebookController extends Controller
             } else {
                 // We are done with configuring the locations, so lets end the Wizard and persist the locations.
                 // TODO: Wrap into DB transaction.
-                $repository = $this->getDoctrine()->getManager();
+                $em = $this->getDoctrine()->getManager();
 
                 foreach($locations as $identifier => $location){
                     // Persist the Facebook user- and page-specific data.
-                    $repository->persist($wizard->get($identifier));
+                    $em->persist($wizard->get($identifier));
                 }
 
                 $this->get('session')->getFlashBag()->add(
@@ -414,14 +414,14 @@ class FacebookController extends Controller
                     if(
                         isset($locations[$identifier])
                     ){
-                        $token = $repository->merge($token);
+                        $token = $em->merge($token);
                         $token->setLocation($locations[$identifier]);
                         $tokenService->setToken($token);
                     }
                 }
 
                 $wizard->end();
-                $repository->flush();
+                $em->flush();
 
                 return $this->redirect($this->generateUrl('campaignchain_core_channel'));
             }
