@@ -10,5 +10,6 @@ parameters:
 services:
     campaignchain.channel.facebook.rest.client:
         class: CampaignChain\Channel\FacebookBundle\REST\FacebookClient
-        calls:
-            - [setContainer, ["@service_container"]]
+        arguments:
+            - "@campaignchain.security.authentication.client.oauth.application"
+            - "@campaignchain.security.authentication.client.oauth.token"

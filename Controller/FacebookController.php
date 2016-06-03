@@ -115,12 +115,9 @@ class FacebookController extends Controller
         $locations[$profile->identifier] = $locationUser;
 
         // Connect to Facebook to retrieve pages related to the user.
-        $oauthApp = $this->get('campaignchain.security.authentication.client.oauth.application');
-        $application = $oauthApp->getApplication(self::RESOURCE_OWNER);
         $tokens = $wizard->get('tokens');
-
         $client = $this->container->get('campaignchain.channel.facebook.rest.client');
-        $connection = $client->connect($application->getKey(), $application->getSecret(), $tokens[$profile->identifier]->getAccessToken());
+        $connection = $client->connect($tokens[$profile->identifier]->getAccessToken());
 
         if($connection) {
             // TODO: Check whether user has manage_pages permission with /me/permissions
@@ -148,7 +145,7 @@ class FacebookController extends Controller
                     $wizard->set('tokens', $tokens);
 
                     // Get the page picture
-                    $pageConnection = $client->connect($application->getKey(), $application->getSecret(), $pageData['access_token']);
+                    $pageConnection = $client->connect($pageData['access_token']);
                     $pagePicture = $pageConnection->api('/'.$pageData['id'].'/picture', 'GET',array (
                         'redirect' => false,
 //                        'height' => '160',
@@ -313,11 +310,9 @@ class FacebookController extends Controller
                 $pageData = $pagesData[$identifier];
 
                 // Connect to Facebook to retrieve detailed info about this page.
-                $oauthApp = $this->get('campaignchain.security.authentication.client.oauth.application');
-                $application = $oauthApp->getApplication(self::RESOURCE_OWNER);
                 $client = $this->container->get('campaignchain.channel.facebook.rest.client');
                 $tokens = $wizard->get('tokens');
-                $connection = $client->connect($application->getKey(), $application->getSecret(), $tokens[$wizard->get('facebook_user_id')]->getAccessToken());
+                $connection = $client->connect($tokens[$wizard->get('facebook_user_id')]->getAccessToken());
 
                 $fields = ['about', 'link', 'name', 'username', 'description', 'can_post', 'category', 'cover', 'is_published'];
                 $response = $connection->api('/'.$identifier.'?fields='.implode(',', $fields));
