@@ -10,37 +10,54 @@
 
 namespace CampaignChain\Channel\FacebookBundle\REST;
 
+use CampaignChain\CoreBundle\Entity\Activity;
+use CampaignChain\Security\Authentication\Client\OAuthBundle\EntityService\ApplicationService;
+use CampaignChain\Security\Authentication\Client\OAuthBundle\EntityService\TokenService;
+use Facebook\FacebookSession;
 use Symfony\Component\HttpFoundation\Session\Session;
-use Guzzle\Http\Client;
-use Guzzle\Plugin\Oauth\OauthPlugin;
+use Facebook\Entities\AccessToken;
+use Facebook\FacebookSDKException;
+use CampaignChain\CoreBundle\Exception\ExternalApiException;
 
 class FacebookClient
 {
     const RESOURCE_OWNER = 'Facebook';
 
-    protected $container;
+    protected $appService;
+    protected $tokenService;
 
-    public function setContainer($container)
+    protected $app;
+    protected $token;
+
+    public function __construct(ApplicationService $appService, TokenService $tokenService)
     {
-        $this->container = $container;
+        $this->appService = $appService;
+        $this->tokenService = $tokenService;
     }
 
-    public function connectByActivity($activity){
-        $oauthApp = $this->container->get('campaignchain.security.authentication.client.oauth.application');
-        $application = $oauthApp->getApplication(self::RESOURCE_OWNER);
-
+    public function connectByActivity(Activity $activity){
         // Get Access Token and Token Secret
-        $oauthToken = $this->container->get('campaignchain.security.authentication.client.oauth.token');
+        $this->token = $this->tokenService->getToken($activity->getLocation());
 
-        $token = $oauthToken->getToken($activity->getLocation());
-
-        return $this->connect($application->getKey(), $application->getSecret(), $token->getAccessToken());
+        return $this->connect();
     }
 
-    public function connect($appId, $appSecret, $accessToken){
+    public function connect($accessToken = null){
+        if(!$this->token){
+            $accessToken = (string) $accessToken;
+        } else {
+            $accessToken = $this->token->getAccessToken();
+        }
+        
+        if(!$accessToken){
+            throw new \Exception('You must provide an access token.');
+        }
+        
+        $this->app = $this->appService->getApplication(self::RESOURCE_OWNER);
+
         $config = array(
-            'appId' => $appId,
-            'secret' => $appSecret,
+            'appId' => $this->app->getKey(),
+            'secret' => $this->app->getSecret(),
             'fileUpload' => false, // optional
             'allowSignedRequest' => false, // optional, but should be set to false for non-canvas apps
         );
@@ -53,13 +70,36 @@ class FacebookClient
         try {
             if ($user) {
                 return $facebook;
-            }
-            else {
-                return false;
-                // Handle errors, if authentication did not work.
-                // 1) Check if App is installed.
-                // 2) check if access token is valid and retrieve new access token if necessary.
-                // Log error, send email, prompt user, ask to check App Key and Secret or to authenticate again
+            } elseif($this->token) {
+                // Renew access token.
+                FacebookSession::setDefaultApplication($this->app->getKey(), $this->app->getSecret());
+
+                $longLivedAccessToken = new AccessToken(
+                    $this->token->getAccessToken()
+                );
+
+                try {
+                    // Get a code from a long-lived access token
+                    $code = AccessToken::getCodeFromAccessToken($longLivedAccessToken);
+                } catch(FacebookSDKException $e) {
+                    throw new ExternalApiException($e->getMessage(), $e->getCode(), $e);
+                }
+
+                try {
+                    // Get a new long-lived access token from the code
+                    $newLongLivedAccessToken = AccessToken::getAccessTokenFromCode($code);
+                } catch(FacebookSDKException $e) {
+                    throw new ExternalApiException($e->getMessage(), $e->getCode(), $e);
+                }
+
+                $accessToken = new AccessToken($newLongLivedAccessToken);
+                dump($accessToken->getInfo());exit;
+
+                $this->token->setAccessToken($newLongLivedAccessToken);
+                $this->tokenService->setToken($this->token);
+
+                // Connect to Facebook REST API again.
+                $this->connect();
             }
         } catch (\FacebookApiException $e) {
             $user = null;
