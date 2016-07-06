@@ -10,55 +10,55 @@
 
 namespace CampaignChain\Channel\FacebookBundle\Controller;
 
-use CampaignChain\CoreBundle\Entity\Channel,
-    CampaignChain\CoreBundle\Entity\Location,
-    CampaignChain\Location\FacebookBundle\Entity\User,
-    CampaignChain\Location\FacebookBundle\Entity\Page;
+use CampaignChain\CoreBundle\Entity\Location;
+use CampaignChain\Location\FacebookBundle\Entity\Page;
+use CampaignChain\Location\FacebookBundle\Entity\User;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\Entity\Token;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Session\Session;
 
 class FacebookController extends Controller
 {
     const RESOURCE_OWNER = 'Facebook';
 
-    private $applicationInfo = array(
-        'key_labels' => array('id', 'App ID'),
-        'secret_labels' => array('secret', 'App Secret'),
+    private $applicationInfo = [
+        'key_labels' => ['id', 'App ID'],
+        'secret_labels' => ['secret', 'App Secret'],
         'config_url' => 'https://developers.facebook.com/apps',
-        'parameters' => array(
-            "trustForwarded" => false,
-            "display" => "popup",
-            "scope" => "public_profile, publish_pages, user_friends, email, publish_actions, manage_pages, read_insights",
-        ),
-    );
+        'parameters' => [
+            'trustForwarded' => false,
+            'display' => 'popup',
+            'scope' => 'public_profile, publish_pages, user_friends, email, publish_actions, manage_pages, read_insights',
+        ],
+    ];
 
     public function createAction()
     {
         $oauthApp = $this->get('campaignchain.security.authentication.client.oauth.application');
         $application = $oauthApp->getApplication(self::RESOURCE_OWNER);
 
-        if(!$application){
+        if (!$application) {
             return $oauthApp->newApplicationTpl(self::RESOURCE_OWNER, $this->applicationInfo);
-        }
-        else {
+        } else {
             return $this->render(
                 'CampaignChainChannelFacebookBundle:Create:index.html.twig',
-                array(
+                [
                     'page_title' => 'Connect with '.self::RESOURCE_OWNER,
                     'app_id' => $application->getKey(),
                     'server_name' => $_SERVER['SERVER_NAME'],
-                )
+                ]
             );
         }
     }
 
-    public function loginAction(Request $request){
+    public function loginAction()
+    {
         $oauth = $this->get('campaignchain.security.authentication.client.oauth.authentication');
         $status = $oauth->authenticate(self::RESOURCE_OWNER, $this->applicationInfo);
 
-        if($status){
+        if ($status) {
             $wizard = $this->get('campaignchain.core.channel.wizard');
             $wizard->set('profile', $oauth->getProfile());
             // Allow to easily find the Facebook user's ID through the Wizard.
@@ -69,7 +69,7 @@ class FacebookController extends Controller
             $redirect = $this->generateUrl('campaignchain_channel_facebook_location_add');
         } else {
             // A channel already exists that has been connected with this Facebook account
-            $this->get('session')->getFlashBag()->add(
+            $this->addFlash(
                 'warning',
                 // TODO: Provide link where to edit existing channel
                 'A channel already exists that has been connected with this Facebook account.'
@@ -80,29 +80,33 @@ class FacebookController extends Controller
 
         return $this->render(
             'CampaignChainChannelFacebookBundle:Create:login.html.twig',
-            array(
+            [
                 'redirect' => $redirect,
-            )
+            ]
         );
     }
 
-    public function addLocationAction(Request $request){
+    public function addLocationAction(Request $request)
+    {
         $wizard = $this->get('campaignchain.core.channel.wizard');
         $channel = $wizard->getChannel();
         $profile = $wizard->get('profile');
 
-        $locations = array();
+        $locations = [];
 
         $locationName = $profile->displayName;
         $username = $profile->username;
 
-        if(!empty($username)){
+        if (!empty($username)) {
             $locationName .= ' ('.$username.')';
         }
 
         // Get the location module for the user stream.
         $locationService = $this->get('campaignchain.core.location');
-        $locationModuleUser = $locationService->getLocationModule('campaignchain/location-facebook', 'campaignchain-facebook-user');
+        $locationModuleUser = $locationService->getLocationModule(
+            'campaignchain/location-facebook',
+            'campaignchain-facebook-user'
+        );
         // Create the location instance for the user stream.
         $locationUser = new Location();
         $locationUser->setChannel($channel);
@@ -119,22 +123,25 @@ class FacebookController extends Controller
         $client = $this->container->get('campaignchain.channel.facebook.rest.client');
         $connection = $client->connect($tokens[$profile->identifier]->getAccessToken());
 
-        if($connection) {
+        if ($connection) {
             // TODO: Check whether user has manage_pages permission with /me/permissions
 
             // check if the user owns Facebook pages
             $response = $connection->api('/me/accounts');
             $pagesData = $response['data'];
 
-            if(is_array($pagesData) && count($pagesData)){
+            if (is_array($pagesData) && count($pagesData)) {
                 // TODO: Should we check whether the Facebook page has actually been published (through is_published), because if not, then posting to it won't make sense? Same with can_post and perms from /me/accounts?
 
                 // Get the location module for the page stream.
-                $locationModulePage = $locationService->getLocationModule('campaignchain/location-facebook', 'campaignchain-facebook-page');
+                $locationModulePage = $locationService->getLocationModule(
+                    'campaignchain/location-facebook',
+                    'campaignchain-facebook-page'
+                );
 
                 // User owns pages, so let's build the form and ask him whether to create channels for each of them
                 // with the respective channel name
-                foreach($pagesData as $pageData){
+                foreach ($pagesData as $pageData) {
                     // Save the token in the Wizard.
                     $tokens = $wizard->get('tokens');
                     $newToken = new Token();
@@ -146,12 +153,16 @@ class FacebookController extends Controller
 
                     // Get the page picture
                     $pageConnection = $client->connect($pageData['access_token']);
-                    $pagePicture = $pageConnection->api('/'.$pageData['id'].'/picture', 'GET',array (
-                        'redirect' => false,
+                    $pagePicture = $pageConnection->api(
+                        '/'.$pageData['id'].'/picture',
+                        'GET',
+                        [
+                            'redirect' => false,
 //                        'height' => '160',
-                        'type' => 'large',
+                            'type' => 'large',
 //                        'width' => '160',
-                    ));
+                        ]
+                    );
                     $pageData['picture_url'] = $pagePicture['data']['url'];
 
                     // Create the location instance for the page stream.
@@ -171,33 +182,38 @@ class FacebookController extends Controller
             }
         }
 
-
-
-        $data = array();
+        $data = [];
         $form = $this->createFormBuilder($data);
-        foreach($locations as $identifier => $location){
+        foreach ($locations as $identifier => $location) {
             // Has the page already been added as a location?
             $repository = $this->getDoctrine()->getRepository('CampaignChainCoreBundle:Location');
-            $pageExists = $repository->findOneBy(array(
-                'identifier' => $identifier,
-                'locationModule' => $location->getLocationModule(),
-            ));
+            $pageExists = $repository->findOneBy(
+                [
+                    'identifier' => $identifier,
+                    'locationModule' => $location->getLocationModule(),
+                ]
+            );
 
             // Compose the checkbox form field.
-            $form->add($identifier, 'checkbox', array(
-                'label'     => '<img class="campaignchain-location-image-input-prepend" src="'.$location->getImage().'"> '.$location->getName(),
-                'required'  => false,
-                'data'     => true,
-                'mapped' => false,
-                'disabled' => $pageExists,
-                'attr' => array(
-                    'align_with_widget' => true,
-                ),
-            ));
+            $form->add(
+                $identifier,
+                CheckboxType::class,
+                [
+                    'label' => '<img class="campaignchain-location-image-input-prepend" src="'.$location->getImage(
+                        ).'"> '.$location->getName(),
+                    'required' => false,
+                    'data' => true,
+                    'mapped' => false,
+                    'disabled' => $pageExists,
+                    'attr' => [
+                        'align_with_widget' => true,
+                    ],
+                ]
+            );
 
             // If a location has already been added before, remove it from this process.
             // TODO: Also assign existing locations to the new FB user.
-            if($pageExists){
+            if ($pageExists) {
                 unset($locations[$identifier]);
             }
         }
@@ -208,37 +224,39 @@ class FacebookController extends Controller
 
         if ($form->isValid()) {
             // Find out which locations should be added, i.e. which respective checkbox is active.
-            foreach($locations as $identifier => $location){
-                if(!$form->get($identifier)->getData()){
+            foreach ($locations as $identifier => $location) {
+                if (!$form->get($identifier)->getData()) {
                     unset($locations[$identifier]);
                     $wizard->removeLocation($identifier);
                 }
             }
 
             // If there's at least one location to be added, then have the user configure it.
-            if(is_array($locations) && count($locations)){
+            if (is_array($locations) && count($locations)) {
                 $wizard->setLocations($locations);
-                return $this->redirect($this->generateUrl('campaignchain_channel_facebook_location_configure', array(
-                    'step' => 0,
-                )));
+
+                return $this->redirectToRoute('campaignchain_channel_facebook_location_configure', ['step' => 0]);
             } else {
-                $this->get('session')->getFlashBag()->add(
+                $this->addFlash(
                     'warning',
                     'No new location has been added.'
                 );
-                return $this->redirect($this->generateUrl('campaignchain_core_channel'));
+
+                return $this->redirectToRoute('campaignchain_core_channel');
             }
         }
 
         return $this->render(
             'CampaignChainCoreBundle:Base:new.html.twig',
-            array(
+            [
                 'page_title' => 'Add Facebook Locations',
                 'form' => $form->createView(),
-            ));
+            ]
+        );
     }
 
-    public function configureLocationAction(Request $request, $step){
+    public function configureLocationAction(Request $request, $step)
+    {
         $wizard = $this->get('campaignchain.core.channel.wizard');
         $locations = $wizard->getLocations();
 
@@ -262,7 +280,7 @@ class FacebookController extends Controller
             $wizard->set('flashBagMsg', $flashBagMsg);
 
             // Is the location a Facebook user or page? The related location module will tell.
-            if($location->getLocationModule()->getIdentifier() == 'campaignchain-facebook-user'){
+            if ($location->getLocationModule()->getIdentifier() == 'campaignchain-facebook-user') {
                 // The display name of the Facebook user will be the name of the CampaignChain channel.
                 $wizard->setName($location->getName());
                 // Get the OAuth profile data from the Wizard.
@@ -295,7 +313,7 @@ class FacebookController extends Controller
                 $user->setProfileUrl($profile->profileURL);
                 $user->setProfileImageUrl($profile->photoURL);
                 $obj = new \ReflectionObject($profile);
-                if($obj->hasProperty("coverInfoUrl")){
+                if ($obj->hasProperty('coverInfoUrl')) {
                     $user->setCoverInfoUrl($profile->coverInfoURL);
                 }
 
@@ -314,7 +332,17 @@ class FacebookController extends Controller
                 $tokens = $wizard->get('tokens');
                 $connection = $client->connect($tokens[$wizard->get('facebook_user_id')]->getAccessToken());
 
-                $fields = ['about', 'link', 'name', 'username', 'description', 'can_post', 'category', 'cover', 'is_published'];
+                $fields = [
+                    'about',
+                    'link',
+                    'name',
+                    'username',
+                    'description',
+                    'can_post',
+                    'category',
+                    'cover',
+                    'is_published',
+                ];
                 $response = $connection->api('/'.$identifier.'?fields='.implode(',', $fields));
                 $pageData = array_merge($pageData, $response);
 
@@ -325,7 +353,7 @@ class FacebookController extends Controller
                 $page->setLocation($location);
                 // If the user is not in the session, then it has already been
                 // created.
-                if($wizard->has($wizard->get('facebook_user_id'))){
+                if ($wizard->has($wizard->get('facebook_user_id'))) {
                     $user = $wizard->get($wizard->get('facebook_user_id'));
                     $page->addUser($user);
                 } else {
@@ -340,19 +368,19 @@ class FacebookController extends Controller
 
                 $page->setIdentifier($identifier);
                 $page->setName($pageData['name']);
-                if(isset($pageData['username'])){
+                if (isset($pageData['username'])) {
                     $page->setUsername($pageData['username']);
                 }
-                if(isset($pageData['description'])){
+                if (isset($pageData['description'])) {
                     $page->setDescription($pageData['description']);
                 }
-                if(isset($pageData['about'])){
+                if (isset($pageData['about'])) {
                     $page->setAbout($pageData['about']);
                 }
                 $page->setPermissions($pageData['perms']);
                 $page->setCanPost($pageData['can_post']);
                 $page->setCategory($pageData['category']);
-                if(isset($pageData['cover'])){
+                if (isset($pageData['cover'])) {
                     $page->setCoverId($pageData['cover']['cover_id']);
                     $page->setCoverSource($pageData['cover']['source']);
                     $page->setCoverOffsetX($pageData['cover']['offset_x']);
@@ -374,22 +402,25 @@ class FacebookController extends Controller
             $wizard->addLocation($identifier, $location);
 
             // Are there still locations to be configured?
-            if(isset(array_keys($locations)[$step + 1])){
+            if (isset(array_keys($locations)[$step + 1])) {
                 // Redirect to this same page to configure the next location.
-                return $this->redirect($this->generateUrl('campaignchain_channel_facebook_location_configure', array(
-                    'step' => $step + 1,
-                )));
+                return $this->redirectToRoute('campaignchain_channel_facebook_location_configure', ['step' => $step + 1]);
             } else {
                 // We are done with configuring the locations, so lets end the Wizard and persist the locations.
                 // TODO: Wrap into DB transaction.
                 $em = $this->getDoctrine()->getManager();
 
-                foreach($locations as $identifier => $location){
+                foreach ($locations as $identifier => $location) {
                     // Persist the Facebook user- and page-specific data.
                     $em->persist($wizard->get($identifier));
+
+                    // schedule job to get metrics from now on
+                    if ($location->getLocationModule()->getIdentifier() === 'campaignchain-facebook-page') {
+                        $this->get('campaignchain.job.report.location.facebook')->schedule($location);
+                    }
                 }
 
-                $this->get('session')->getFlashBag()->add(
+                $this->addFlash(
                     'success',
                     'The following locations are now connected:'.
                     '<ul>'.$wizard->get('flashBagMsg').'</ul>'
@@ -405,10 +436,10 @@ class FacebookController extends Controller
                  * locations, not the page locations.
                  */
                 $tokenService = $this->get('campaignchain.security.authentication.client.oauth.token');
-                foreach($tokens as $identifier => $token){
-                    if(
-                        isset($locations[$identifier])
-                    ){
+                foreach ($tokens as $identifier => $token) {
+                    if (
+                    isset($locations[$identifier])
+                    ) {
                         $token = $em->merge($token);
                         $token->setLocation($locations[$identifier]);
                         $tokenService->setToken($token);
@@ -418,16 +449,17 @@ class FacebookController extends Controller
                 $wizard->end();
                 $em->flush();
 
-                return $this->redirect($this->generateUrl('campaignchain_core_channel'));
+                return $this->redirectToRoute('campaignchain_core_channel');
             }
         }
 
         return $this->render(
             'CampaignChainLocationFacebookBundle::new.html.twig',
-            array(
+            [
                 'page_title' => 'Configure Facebook Location',
                 'form' => $form->createView(),
                 'location' => $location,
-            ));
+            ]
+        );
     }
 }
