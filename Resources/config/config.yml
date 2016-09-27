@@ -1,0 +1,23 @@
+# Copyright 2016 CampaignChain, Inc. <info@campaignchain.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+campaignchain_channel_facebook:
+    # Facebook does not allow subsequent duplicate posts with the same content
+    # to appear within a given time. Usually that's 24 hours. Define the
+    # interval that should be between the latest identical post and the
+    # new one below as per relative date formats in PHP (e.g. "1 day"):
+    # http://php.net/manual/en/datetime.formats.relative.php.
+    #
+    # Omit the "+" or "-" operator.
+    max_duplicate_interval: 1 day
