@@ -71,14 +71,20 @@ class FacebookClient
             'allowSignedRequest' => false, // optional, but should be set to false for non-canvas apps
         ];
 
-        $facebook = new \Facebook($config);
+        $connection = new \Facebook($config);
 
-        $facebook->setAccessToken($accessToken);
-        $user = $facebook->getUser();
+        $connection->setAccessToken($accessToken);
+        $user = $connection->getUser();
 
         try {
             if ($user) {
-                return $facebook;
+                if (!$connection) {
+                    throw new ExternalApiException(
+                        'Cannot connect to Facebook REST API."'
+                    );
+                }
+
+                return $connection;
             } elseif ($this->token) {
                 // Renew access token.
                 FacebookSession::setDefaultApplication($this->app->getKey(), $this->app->getSecret());

@@ -27,3 +27,8 @@ campaignchain_channel_facebook_location_add:
 campaignchain_channel_facebook_location_configure:
     pattern:  /channel/facebook/create/location/configure/{step}
     defaults: { _controller: CampaignChainChannelFacebookBundle:Facebook:configureLocation }
+
+# REST routes are being created automatically via FOSRestBundle.
+campaignchain_channel_facebook_rest:
+    resource: "@CampaignChainChannelFacebookBundle/Resources/config/routing_rest.yml"
+    prefix: /api/v1/p/campaignchain/channel-facebook
