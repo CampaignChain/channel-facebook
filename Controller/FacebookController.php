@@ -82,7 +82,7 @@ class FacebookController extends Controller
                 'A channel already exists that has been connected with this Facebook account.'
             );
 
-            $redirect = $this->generateUrl('campaignchain_core_channel');
+            $redirect = $this->generateUrl('campaignchain_core_location');
         }
 
         return $this->render(
@@ -249,7 +249,7 @@ class FacebookController extends Controller
                     'No new location has been added.'
                 );
 
-                return $this->redirectToRoute('campaignchain_core_channel');
+                return $this->redirectToRoute('campaignchain_core_location');
             }
         }
 
@@ -456,7 +456,7 @@ class FacebookController extends Controller
                 $wizard->end();
                 $em->flush();
 
-                return $this->redirectToRoute('campaignchain_core_channel');
+                return $this->redirectToRoute('campaignchain_core_location');
             }
         }
 
