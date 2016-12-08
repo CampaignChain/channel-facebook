@@ -41,6 +41,11 @@ class FacebookController extends Controller
         ],
     ];
 
+    public function getLogger()
+    {
+        return $this->has('monolog.logger.external') ? $this->get('monolog.logger.external') : $this->get('monolog.logger');
+    }
+
     public function createAction()
     {
         $oauthApp = $this->get('campaignchain.security.authentication.client.oauth.application');
@@ -63,7 +68,7 @@ class FacebookController extends Controller
     public function loginAction()
     {
         $oauth = $this->get('campaignchain.security.authentication.client.oauth.authentication');
-        $status = $oauth->authenticate(self::RESOURCE_OWNER, $this->applicationInfo);
+        $status = $oauth->authenticate(self::RESOURCE_OWNER, $this->applicationInfo, false, false);
 
         if ($status) {
             $wizard = $this->get('campaignchain.core.channel.wizard');
@@ -282,10 +287,6 @@ class FacebookController extends Controller
         $form->handleRequest($request);
 
         if ($form->isValid()) {
-            // Keep track of Flash Bag Messages in the Wizard.
-            $flashBagMsg = '';
-            $wizard->set('flashBagMsg', $flashBagMsg);
-
             // Is the location a Facebook user or page? The related location module will tell.
             if ($location->getLocationModule()->getIdentifier() == 'campaignchain-facebook-user') {
                 // The display name of the Facebook user will be the name of the CampaignChain channel.
@@ -326,10 +327,6 @@ class FacebookController extends Controller
 
                 // Remember the user object in the Wizard.
                 $wizard->set($user->getIdentifier(), $user);
-
-                $flashBagMsg = $wizard->get('flashBagMsg');
-                $flashBagMsg .= '<li>User stream: <a href="'.$profile->profileURL.'">'.$profile->displayName.'</a></li>';
-                $wizard->set('flashBagMsg', $flashBagMsg);
             } else {
                 $pagesData = $wizard->get('pagesData');
                 $pageData = $pagesData[$identifier];
@@ -358,20 +355,6 @@ class FacebookController extends Controller
 
                 $page = new Page();
                 $page->setLocation($location);
-                // If the user is not in the session, then it has already been
-                // created.
-                if ($wizard->has($wizard->get('facebook_user_id'))) {
-                    $user = $wizard->get($wizard->get('facebook_user_id'));
-                    $page->addUser($user);
-                } else {
-                    $user = $this->getDoctrine()
-                        ->getRepository('CampaignChainLocationFacebookBundle:User')
-                        ->findOneByIdentifier($wizard->get('facebook_user_id'));
-
-                    if ($user) {
-                        $page->addUser($user);
-                    }
-                }
 
                 $page->setIdentifier($identifier);
                 $page->setName($pageData['name']);
@@ -397,12 +380,8 @@ class FacebookController extends Controller
                 $page->setLink($pageData['link']);
                 $page->setPictureUrl($pageData['picture_url']);
 
-                // Remember the user object in the Wizard.
+                // Remember the page object in the Wizard.
                 $wizard->set($page->getIdentifier(), $page);
-
-                $flashBagMsg = $wizard->get('flashBagMsg');
-                $flashBagMsg .= '<li>Page: <a href="'.$page->getLink().'">'.$page->getName().'</a></li>';
-                $wizard->set('flashBagMsg', $flashBagMsg);
             }
 
             // Add the updated Location to the wizard
@@ -414,47 +393,92 @@ class FacebookController extends Controller
                 return $this->redirectToRoute('campaignchain_channel_facebook_location_configure', ['step' => $step + 1]);
             } else {
                 // We are done with configuring the locations, so lets end the Wizard and persist the locations.
-                // TODO: Wrap into DB transaction.
                 $em = $this->getDoctrine()->getManager();
+                try {
+                    $em->getConnection()->beginTransaction();
 
-                foreach ($locations as $identifier => $location) {
-                    // Persist the Facebook user- and page-specific data.
-                    $em->persist($wizard->get($identifier));
-
-                    // schedule job to get metrics from now on
-                    if ($location->getLocationModule()->getIdentifier() === 'campaignchain-facebook-page') {
-                        $this->get('campaignchain.job.report.location.facebook')->schedule($location);
+                    // If the user is not in the session, then it has already been
+                    // connected previously.
+                    if ($wizard->has($wizard->get('facebook_user_id'))) {
+                        $user = $wizard->get($wizard->get('facebook_user_id'));
+                    } else {
+                        $user = $this->getDoctrine()
+                            ->getRepository('CampaignChainLocationFacebookBundle:User')
+                            ->findOneByIdentifier($wizard->get('facebook_user_id'));
                     }
-                }
 
-                $this->addFlash(
-                    'success',
-                    'The following locations are now connected:'.
-                    '<ul>'.$wizard->get('flashBagMsg').'</ul>'
-                );
+                    $flashBagMsg = '';
 
-                $tokens = $wizard->get('tokens');
+                    foreach ($locations as $identifier => $location) {
+                        // Persist the Facebook user- and page-specific data.
+                        $fbLocation = $wizard->get($identifier);
+                        $em->persist($fbLocation);
 
-                $channel = $wizard->persist();
+                        if($fbLocation instanceof Page){
+                            // Add related User account to Page.
+                            $fbLocation->addUser($user);
 
-                /*
-                 * Store all access tokens per location in the OAuth Client
-                 * bundle's Token entity, but only for the Facebook user
-                 * locations, not the page locations.
-                 */
-                $tokenService = $this->get('campaignchain.security.authentication.client.oauth.token');
-                foreach ($tokens as $identifier => $token) {
-                    if (
-                    isset($locations[$identifier])
-                    ) {
-                        $token = $em->merge($token);
-                        $token->setLocation($locations[$identifier]);
-                        $tokenService->setToken($token);
+                            $flashBagMsg .= '<li>Page: <a href="'.$fbLocation->getLink().'">'.$fbLocation->getName().'</a></li>';
+                        } elseif($fbLocation instanceof User) {
+                            $flashBagMsg .= '<li>User stream: <a href="'.$fbLocation->getProfileUrl().'">'.$fbLocation->getDisplayName().'</a></li>';
+                        }
+
+                        // schedule job to get metrics from now on
+                        if ($location->getLocationModule()->getIdentifier() === 'campaignchain-facebook-page') {
+                            $this->get('campaignchain.job.report.location.facebook')->schedule($location);
+                        }
                     }
-                }
 
-                $wizard->end();
-                $em->flush();
+                    $tokens = $wizard->get('tokens');
+
+                    $wizard->persist();
+
+                    /*
+                     * Store all access tokens per location in the OAuth Client
+                     * bundle's Token entity, but only for the Facebook user
+                     * locations, not the page locations.
+                     */
+                    $tokenService = $this->get('campaignchain.security.authentication.client.oauth.token');
+                    foreach ($tokens as $identifier => $token) {
+                        if (isset($locations[$identifier])) {
+                            $token = $em->merge($token);
+                            $token->setLocation($locations[$identifier]);
+                            $tokenService->setToken($token);
+                        }
+                    }
+
+                    $em->flush();
+
+                    $this->addFlash(
+                        'success',
+                        'The following locations are now connected:'.
+                        '<ul>'.$flashBagMsg.'</ul>'
+                    );
+
+                    $wizard->end();
+
+                    $em->getConnection()->commit();
+                } catch(\Exception $e) {
+                    $em->getConnection()->rollback();
+
+                    $message = 'An error occurred, please try to re-connect all Locations: ';
+
+                    if($this->get('kernel')->getEnvironment() == 'dev'){
+                        $message .= $e->getMessage().' '.$e->getFile().' '.$e->getLine().'<br/>'.$e->getTraceAsString();
+                    } else {
+                        $message .= $e->getMessage();
+                    }
+                    $this->addFlash(
+                        'warning',
+                        $message
+                    );
+
+                    $this->getLogger()->error($e->getMessage(), array(
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTrace(),
+                    ));
+                }
 
                 return $this->redirectToRoute('campaignchain_core_location');
             }
