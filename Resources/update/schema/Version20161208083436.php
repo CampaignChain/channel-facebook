@@ -2,7 +2,9 @@
 
 namespace Application\Migrations;
 
+use CampaignChain\Channel\FacebookBundle\REST\FacebookClient;
 use CampaignChain\Location\FacebookBundle\Entity\Page;
+use CampaignChain\Location\FacebookBundle\Entity\User;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\Entity\Token;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\EntityService\ApplicationService;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\EntityService\TokenService;
@@ -59,41 +61,87 @@ class Version20161208083436 extends AbstractMigration implements ContainerAwareI
             $oauthAppService = $this->container->get('campaignchain.security.authentication.client.oauth.application');
             $oauthApp = $oauthAppService->getApplication('Facebook');
 
-            /** @var Page $page */
-            foreach ($pages as $page) {
+            try {
+                $em->getConnection()->beginTransaction();
+
                 /** @var TokenService $tokenService */
                 $tokenService = $this->container->get('campaignchain.security.authentication.client.oauth.token');
-                $userToken = $tokenService->getToken($page->getUsers()[0]->getLocation());
-
+                /** @var FacebookClient $client */
                 $client = $this->container->get('campaignchain.channel.facebook.rest.client');
-                $connection = $client->connect($userToken->getAccessToken());
 
-                if ($connection) {
-                    $response = $connection->api('/me/accounts');
-                    $pagesData = $response['data'];
+                /** @var Page $page */
+                foreach ($pages as $page) {
+                    $pageToken = $tokenService->getToken($page->getLocation());
 
-                    if (is_array($pagesData) && count($pagesData)) {
-                        // Restructure response data
-                        foreach ($pagesData as $pageData) {
-                            $tokens[$pageData['id']] = $pageData['access_token'];
+                    // If no Facebook user is related to the page, we'll restore
+                    // the assignment.
+                    if (!$page->getUsers() || !count($page->getUsers())) {
+                        if($pageToken) {
+                            $connection = $client->connect($pageToken->getAccessToken());
+
+                            $response = $connection->api('/' . $page->getIdentifier() . '/roles');
+                            $pageAdmins = $response['data'];
+
+                            foreach ($pageAdmins as $pageAdmin) {
+                                /** @var User $localUser */
+                                $localUser = $em->getRepository('CampaignChain\Location\FacebookBundle\Entity\User')
+                                    ->findOneByIdentifier($pageAdmin['id']);
+
+                                if ($localUser) {
+                                    $localUser->addPage($page);
+                                    $page->addUser($localUser);
+                                    $em->flush();
+
+                                    $this->write(
+                                        'Mapped Facebook page "'.
+                                        $page->getLocation()->getName() . '" (' . $page->getIdentifier() . ') '.
+                                        'to Facebook user "'.
+                                        $localUser->getLocation()->getName() . '" (' . $localUser->getIdentifier() . ') '
+                                    );
+                                }
+                            }
                         }
+                    }
 
-                        // Apply retrieved tokens to Pages where they are missing.
-                        $token = new Token();
-                        $token->setApplication($oauthApp);
-                        $token->setLocation($page->getLocation());
-                        $token->setAccessToken($tokens[$page->getIdentifier()]);
+                    if($pageToken){
+                        continue;
+                    }
 
-                        $this->write(
-                            'Inserted token for Facebook page "'.$page->getLocation()->getName().'" ('.$page->getIdentifier().')'
+                    $userToken = $tokenService->getToken($page->getUsers()[0]->getLocation());
+                    $connection = $client->connect($userToken->getAccessToken());
+
+                    if ($connection) {
+                        $response = $connection->api('/me/accounts');
+                        $pagesData = $response['data'];
+
+                        if (is_array($pagesData) && count($pagesData)) {
+                            // Restructure response data
+                            foreach ($pagesData as $pageData) {
+                                $tokens[$pageData['id']] = $pageData['access_token'];
+                            }
+
+                            // Apply retrieved tokens to Pages where they are missing.
+                            $token = new Token();
+                            $token->setApplication($oauthApp);
+                            $token->setLocation($page->getLocation());
+                            $token->setAccessToken($tokens[$page->getIdentifier()]);
+
+                            $this->write(
+                                'Inserted token for Facebook page "' . $page->getLocation()->getName() . '" (' . $page->getIdentifier() . ')'
                             );
-                        
-                        $em->persist($token);
+
+                            $em->persist($token);
+                        }
                     }
                 }
-            }
 
-            $em->flush();
+                $em->flush();
+
+                $em->getConnection()->commit();
+            } catch (\Exception $e) {
+                $this->write($e->getMessage());
+                throw $e;
+            }
         }
     }
 
