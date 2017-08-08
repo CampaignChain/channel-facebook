@@ -77,9 +77,10 @@ class Version20161208083436 extends AbstractMigration implements ContainerAwareI
                     // the assignment.
                     if (!$page->getUsers() || !count($page->getUsers())) {
                         if($pageToken) {
+                            /** @var FacebookClient $connection */
                             $connection = $client->connect($pageToken->getAccessToken());
 
-                            $response = $connection->api('/' . $page->getIdentifier() . '/roles');
+                            $response = $connection->getRoles($page->getIdentifier());
                             $pageAdmins = $response['data'];
 
                             foreach ($pageAdmins as $pageAdmin) {
@@ -111,7 +112,7 @@ class Version20161208083436 extends AbstractMigration implements ContainerAwareI
                     $connection = $client->connect($userToken->getAccessToken());
 
                     if ($connection) {
-                        $response = $connection->api('/me/accounts');
+                        $response = $connection->getMyPages();
                         $pagesData = $response['data'];
 
                         if (is_array($pagesData) && count($pagesData)) {

@@ -17,6 +17,7 @@
 
 namespace CampaignChain\Channel\FacebookBundle\Controller;
 
+use CampaignChain\Channel\FacebookBundle\REST\FacebookClient;
 use CampaignChain\CoreBundle\Entity\Location;
 use CampaignChain\Location\FacebookBundle\Entity\Page;
 use CampaignChain\Location\FacebookBundle\Entity\User;
@@ -107,11 +108,6 @@ class FacebookController extends Controller
         $locations = [];
 
         $locationName = $profile->displayName;
-        $username = $profile->username;
-
-        if (!empty($username)) {
-            $locationName .= ' ('.$username.')';
-        }
 
         // Get the location module for the user stream.
         $locationService = $this->get('campaignchain.core.location');
@@ -133,13 +129,14 @@ class FacebookController extends Controller
         // Connect to Facebook to retrieve pages related to the user.
         $tokens = $wizard->get('tokens');
         $client = $this->container->get('campaignchain.channel.facebook.rest.client');
+        /** @var FacebookClient $connection */
         $connection = $client->connect($tokens[$profile->identifier]->getAccessToken());
 
         if ($connection) {
             // TODO: Check whether user has manage_pages permission with /me/permissions
 
             // check if the user owns Facebook pages
-            $response = $connection->api('/me/accounts');
+            $response = $connection->getMyPages();
             $pagesData = $response['data'];
 
             if (is_array($pagesData) && count($pagesData)) {
@@ -165,16 +162,7 @@ class FacebookController extends Controller
 
                     // Get the page picture
                     $pageConnection = $client->connect($pageData['access_token']);
-                    $pagePicture = $pageConnection->api(
-                        '/'.$pageData['id'].'/picture',
-                        'GET',
-                        [
-                            'redirect' => false,
-//                        'height' => '160',
-                            'type' => 'large',
-//                        'width' => '160',
-                        ]
-                    );
+                    $pagePicture = $pageConnection->getPicture($pageData['id']);
                     $pageData['picture_url'] = $pagePicture['data']['url'];
 
                     // Create the location instance for the page stream.
@@ -301,7 +289,6 @@ class FacebookController extends Controller
                 $user->setLocation($location);
                 $user->setScope($this->applicationInfo['parameters']['scope']);
                 $user->setIdentifier($profile->identifier);
-                $user->setUsername($profile->username);
                 $user->setDisplayName($profile->displayName);
                 $user->setFirstName($profile->firstName);
                 $user->setLastName($profile->lastName);
@@ -334,6 +321,7 @@ class FacebookController extends Controller
                 // Connect to Facebook to retrieve detailed info about this page.
                 $client = $this->container->get('campaignchain.channel.facebook.rest.client');
                 $tokens = $wizard->get('tokens');
+                /** @var FacebookClient $connection */
                 $connection = $client->connect($tokens[$wizard->get('facebook_user_id')]->getAccessToken());
 
                 $fields = [
@@ -347,7 +335,7 @@ class FacebookController extends Controller
                     'cover',
                     'is_published',
                 ];
-                $response = $connection->api('/'.$identifier.'?fields='.implode(',', $fields));
+                $response = $connection->getPage($identifier, $fields);
                 $pageData = array_merge($pageData, $response);
 
                 // Define the URL of the location
