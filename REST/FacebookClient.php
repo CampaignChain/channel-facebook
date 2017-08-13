@@ -22,10 +22,8 @@ use CampaignChain\CoreBundle\Entity\Location;
 use CampaignChain\CoreBundle\Exception\ExternalApiException;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\EntityService\ApplicationService;
 use CampaignChain\Security\Authentication\Client\OAuthBundle\EntityService\TokenService;
+use Facebook\Exceptions\FacebookSDKException;
 use Facebook\Facebook;
-use Facebook\Entities\AccessToken;
-use Facebook\FacebookSDKException;
-use Facebook\FacebookSession;
 use GuzzleHttp\Client;
 
 class FacebookClient
@@ -72,7 +70,7 @@ class FacebookClient
         }
 
         if (!$accessToken) {
-            throw new \Exception('You must provide an access token.');
+            throw new ExternalApiException('You must provide an access token.');
         }
 
         $this->app = $this->appService->getApplication(self::RESOURCE_OWNER);
@@ -86,7 +84,11 @@ class FacebookClient
             'default_access_token' => $accessToken,
         ];
 
-        $this->client = new Facebook($config);
+        try {
+            $this->client = new Facebook($config);
+        } catch(\Exception $e){
+            throw new ExternalApiException($e->getMessage(), $e->getCode());
+        }
 
         return $this;
 
@@ -147,11 +149,11 @@ class FacebookClient
              * If the session expired, then we must request a new token with the
              * refresh token.
              */
-            if($e->getCode() == '190'){
+//            if($e->getCode() == '190'){
 //                $this->refreshToken($method, $uri, $body);
 //            } else {
-                throw new \Exception($e->getMessage());
-            }
+                throw new ExternalApiException($e->getMessage(), $e->getCode());
+//            }
         }
     }
 
