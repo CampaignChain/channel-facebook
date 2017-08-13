@@ -87,7 +87,7 @@ class FacebookClient
         try {
             $this->client = new Facebook($config);
         } catch(\Exception $e){
-            throw new ExternalApiException($e->getMessage(), $e->getCode());
+            throw new ExternalApiException($e->getMessage(), $e->getCode(), $e);
         }
 
         return $this;
@@ -152,7 +152,7 @@ class FacebookClient
 //            if($e->getCode() == '190'){
 //                $this->refreshToken($method, $uri, $body);
 //            } else {
-                throw new ExternalApiException($e->getMessage(), $e->getCode());
+                throw new ExternalApiException($e->getMessage(), $e->getCode(), $e);
 //            }
         }
     }
